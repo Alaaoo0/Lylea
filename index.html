@@ -31,6 +31,27 @@ body { background: var(--bg); color: var(--text-main); min-height: 100vh; overfl
 .toast-notification.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 .toast-notification.error { border-color: #e74c3c; color: #e74c3c; }
 
+/* شاشة الإعلان */
+.ad-overlay {
+  position: fixed; inset: 0; background: #050508; z-index: 100000;
+  display: none; flex-direction: column; justify-content: center; align-items: center; padding: 20px;
+}
+.ad-overlay.active { display: flex; animation: fadeIn 0.3s; }
+.ad-header { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 10px; }
+.ad-close-btn {
+  background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.2);
+  padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; cursor: not-allowed;
+  transition: 0.3s;
+}
+.ad-close-btn.active {
+  background: var(--gold); color: #000; border-color: var(--gold); cursor: pointer;
+}
+.ad-content {
+  width: 100%; max-width: 320px; height: 250px; background: #14141f;
+  border: 1px dashed var(--border); border-radius: 20px; display: flex; justify-content: center; align-items: center;
+  color: var(--text-muted); text-align: center; font-size: 16px; padding: 10px; overflow: hidden;
+}
+
 .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: var(--panel); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 .brand h1 { font-size: 28px; color: var(--gold); font-weight: 800; }
 .controls { display: flex; gap: 12px; align-items: center; }
@@ -163,6 +184,26 @@ body.light-mode .read-nav { background: rgba(247, 245, 240, 0.9); }
 </style>
 </head>
 <body>
+
+<!-- شاشة الإعلان -->
+<div class="ad-overlay" id="adOverlay">
+  <div class="ad-header">
+    <button class="ad-close-btn" id="adCloseBtn" onclick="closeAd()">تخطي الإعلان (5)</button>
+  </div>
+  <div class="ad-content" id="adContainer">
+    <!-- 🔴 كود Adsterra الخاص بك 🔴 -->
+    <script type="text/javascript">
+      atOptions = {
+        'key' : '0e76c048caa945d3c97c38670b4eedfa',
+        'format' : 'iframe',
+        'height' : 250,
+        'width' : 300,
+        'params' : {}
+      };
+    </script>
+    <script type="text/javascript" src="//bauval.org/22/0e76c048caa945d3c97c38670b4eedfa"></script>
+  </div>
+</div>
 
 <div id="customToast" class="toast-notification"></div>
 
@@ -347,13 +388,13 @@ body.light-mode .read-nav { background: rgba(247, 245, 240, 0.9); }
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
-<!-- 🔴 كود OneSignal للإشعارات 🔴 -->
+<!-- كود OneSignal للإشعارات -->
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(function(OneSignal) {
     OneSignal.init({
-      appId: "12fd9612-8f0e-4b34-9413-3351d713cf81",
+      appId: "os_v2_app_cl6zmeupbzftjfatgni5oe6pqem6ylp43hguheft5px3oys7gh6e2u4fndcxbpdeurrbaswlvcf6jegzwucjk2xef4jlnestbiyujbq",
       notifyButton: { enable: false }, 
     });
   });
@@ -417,6 +458,46 @@ body.light-mode .read-nav { background: rgba(247, 245, 240, 0.9); }
     const icon = isLight ? '☀️' : '🌙';
     if(document.getElementById('themeBtn')) document.getElementById('themeBtn').innerText = icon;
     if(document.getElementById('readThemeBtn')) document.getElementById('readThemeBtn').innerText = icon;
+  };
+
+  // ====== نظام الإعلانات ======
+  let adTimer = null;
+  let adCallback = null;
+
+  window.showAd = function(callback) {
+    adCallback = callback;
+    const adOverlay = document.getElementById('adOverlay');
+    const closeBtn = document.getElementById('adCloseBtn');
+    
+    adOverlay.classList.add('active');
+    
+    let timeLeft = 5;
+    closeBtn.innerText = `تخطي الإعلان (${timeLeft})`;
+    closeBtn.classList.remove('active');
+    closeBtn.disabled = true;
+
+    clearInterval(adTimer);
+    adTimer = setInterval(() => {
+      timeLeft--;
+      if (timeLeft > 0) {
+        closeBtn.innerText = `تخطي الإعلان (${timeLeft})`;
+      } else {
+        clearInterval(adTimer);
+        closeBtn.innerText = `إغلاق الإعلان ✖`;
+        closeBtn.classList.add('active');
+        closeBtn.disabled = false;
+      }
+    }, 1000);
+  };
+
+  window.closeAd = function() {
+    const adOverlay = document.getElementById('adOverlay');
+    const closeBtn = document.getElementById('adCloseBtn');
+    if (!closeBtn.classList.contains('active')) return;
+    
+    adOverlay.classList.remove('active');
+    clearInterval(adTimer);
+    if (adCallback) adCallback();
   };
 
   // ====== الإشعارات ======
@@ -513,7 +594,6 @@ body.light-mode .read-nav { background: rgba(247, 245, 240, 0.9); }
 
   window.readerLogout = function() { auth.signOut().then(() => { closeModal('userModal'); showToast("👋 تم تسجيل الخروج."); }); };
 
-  // ====== المفضلة ======
   window.toggleFavorite = function(storyId, event) {
     if(event) event.stopPropagation(); 
     if(!currentUser) {
@@ -545,7 +625,6 @@ body.light-mode .read-nav { background: rgba(247, 245, 240, 0.9); }
     }
   }
 
-  // ====== إدارة الأدمن ======
   window.openAdminModal = function() { document.getElementById('adminModal').classList.add('active'); document.getElementById('adminPasswordInput').focus(); };
   window.handleAdminEnter = function(e) { if (e.key === 'Enter') adminLogin(); };
   
@@ -684,42 +763,45 @@ body.light-mode .read-nav { background: rgba(247, 245, 240, 0.9); }
     }
   }
 
+  // عرض الإعلان قبل فتح القصة
   window.openReadModal = function(storyId) {
-    const story = allStories.find(s => s.id === storyId);
-    if (!story) return;
-    currentStoryData = story;
-    
-    document.getElementById('readImg').src = story.img || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=600&auto=format&fit=crop';
-    document.getElementById('readTitle').innerText = story.title;
-    document.getElementById('readCat').innerText = story.cat;
-    document.getElementById('readDur').innerText = story.dur;
-    document.getElementById('readSubtitle').innerText = story.desc.substring(0, 120) + '...';
+    showAd(() => {
+      const story = allStories.find(s => s.id === storyId);
+      if (!story) return;
+      currentStoryData = story;
+      
+      document.getElementById('readImg').src = story.img || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=600&auto=format&fit=crop';
+      document.getElementById('readTitle').innerText = story.title;
+      document.getElementById('readCat').innerText = story.cat;
+      document.getElementById('readDur').innerText = story.dur;
+      document.getElementById('readSubtitle').innerText = story.desc.substring(0, 120) + '...';
 
-    const isPremium = story.isPremium === true;
-    let isUnlocked = currentUser ? userUnlockedStories.includes(story.id) : guestUnlockedStories.includes(story.id);
+      const isPremium = story.isPremium === true;
+      let isUnlocked = currentUser ? userUnlockedStories.includes(story.id) : guestUnlockedStories.includes(story.id);
 
-    const premiumBadge = document.getElementById('readPremiumBadge');
-    const paywallSection = document.getElementById('paywallSection');
-    const blurOverlay = document.getElementById('blurOverlay');
-    const readDesc = document.getElementById('readDesc');
-    const payBtnText = document.getElementById('payBtnText');
+      const premiumBadge = document.getElementById('readPremiumBadge');
+      const paywallSection = document.getElementById('paywallSection');
+      const blurOverlay = document.getElementById('blurOverlay');
+      const readDesc = document.getElementById('readDesc');
+      const payBtnText = document.getElementById('payBtnText');
 
-    if (isPremium) { premiumBadge.classList.remove('hidden'); } else { premiumBadge.classList.add('hidden'); }
+      if (isPremium) { premiumBadge.classList.remove('hidden'); } else { premiumBadge.classList.add('hidden'); }
 
-    if (!isPremium || isUnlocked) {
-      readDesc.innerText = story.desc;
-      paywallSection.style.display = 'none'; blurOverlay.style.display = 'none';
-    } else {
-      const limit = story.previewLimit || 500;
-      readDesc.innerText = story.desc.substring(0, limit) + "...";
-      const price = story.price || 5;
-      document.getElementById('paywallText').innerText = `عجبتك البداية؟ حول المبلغ عشان تكمل قصة "${story.title}".`;
-      payBtnText.innerText = `ادفع ${price}$ واكمل القصة`;
-      paywallSection.style.display = 'block'; blurOverlay.style.display = 'block';
-    }
-    
-    updateReadModalFavBtn(); 
-    document.getElementById('readModal').classList.add('active');
+      if (!isPremium || isUnlocked) {
+        readDesc.innerText = story.desc;
+        paywallSection.style.display = 'none'; blurOverlay.style.display = 'none';
+      } else {
+        const limit = story.previewLimit || 500;
+        readDesc.innerText = story.desc.substring(0, limit) + "...";
+        const price = story.price || 5;
+        document.getElementById('paywallText').innerText = `عجبتك البداية؟ حول المبلغ عشان تكمل قصة "${story.title}".`;
+        payBtnText.innerText = `ادفع ${price}$ واكمل القصة`;
+        paywallSection.style.display = 'block'; blurOverlay.style.display = 'block';
+      }
+      
+      updateReadModalFavBtn(); 
+      document.getElementById('readModal').classList.add('active');
+    });
   };
 
   async function fetchCategories() {
@@ -908,10 +990,16 @@ body.light-mode .read-nav { background: rgba(247, 245, 240, 0.9); }
     finally { btn.innerText = "نشر للجميع 🚀"; btn.disabled = false; }
   };
 
-  setSmartGreeting();
-  setAdminUI();
-  fetchCategories();
-  fetchStories();
+  // تشغيل شاشة الإعلان أول ما التطبيق يفتح
+  setTimeout(() => {
+    showAd(() => {
+      setSmartGreeting();
+      setAdminUI();
+      fetchCategories();
+      fetchStories();
+    });
+  }, 1000);
+
 </script>
 </body>
 </html>
