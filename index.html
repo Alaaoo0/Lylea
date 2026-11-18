@@ -1119,7 +1119,26 @@ body.light-mode .read-nav { background: rgba(247, 245, 240, 0.9); }
       btn.disabled = false; 
     }
   };
+  // ====== عداد مرات فتح التطبيق ======
+  async function countAppOpen() {
+    const counterKey = "my_app_app_opens_alaaoo0";
 
+    try {
+      const response = await fetch(
+        `https://countapi.mileshilliard.com/api/v1/hit/${counterKey}`
+      );
+
+      if (!response.ok) throw new Error("Counter request failed");
+
+      const data = await response.json();
+      console.log("إجمالي مرات فتح التطبيق:", data.value);
+
+    } catch (error) {
+      console.error("تعذر تحديث عداد فتح التطبيق:", error);
+    }
+  }
+
+  countAppOpen();
   setTimeout(() => {
     showAd(() => {
       setSmartGreeting();
